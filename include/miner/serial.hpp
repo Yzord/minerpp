@@ -50,6 +50,7 @@ namespace miner {
 			message_type_new_work = 19,
 			message_type_restart = 20,
 			message_type_test_work = 21,
+			message_type_result = 32,
             message_type_error = 0xfe,
         } message_type_t;
         
