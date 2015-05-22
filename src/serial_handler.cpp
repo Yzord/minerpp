@@ -20,6 +20,7 @@
 
 #include <cassert>
 
+#include <miner/logger.hpp>
 #include <miner/serial.hpp>
 #include <miner/serial_handler.hpp>
 #include <miner/serial_port.hpp>
@@ -31,6 +32,7 @@ using namespace miner;
 serial_handler::serial_handler(std::shared_ptr<serial_port> & owner)
     : serial_port_(owner)
     , strand_(owner->io_service())
+	, nonce_start_(0)
 {
     // ...
 }
@@ -56,6 +58,14 @@ void serial_handler::set_has_new_work(const bool & val)
          */
         if (prepare_work(endiandata))
         {
+#define USE_TEST_WORK 0
+
+#if (defined USE_TEST_WORK && USE_TEST_WORK)
+			/**
+			 * Send test work.
+			 */
+			send_test_work();
+#else
 			/**
 			 * The work length.
 			 */
@@ -76,9 +86,33 @@ void serial_handler::set_has_new_work(const bool & val)
 
 			std::memcpy(&buffer[2], endiandata, work_length);
 
+			/**
+			 * Print the work for debugging.
+			 */
+
+			auto index = 0;
+
+			printf("work: ");
+
+			for (auto & i : buffer)
+			{
+				if (index > 1)
+				{
+					printf("%d", (unsigned)i);
+				}
+
+				if (index++ == 81)
+				{
+					break;
+				}
+			}
+
+			printf("\n");
+
             i->write(
                 reinterpret_cast<const char *> (&buffer[0]), buffer.size()
             );
+#endif
         }
     }
 }
@@ -141,11 +175,22 @@ bool serial_handler::prepare_work(std::uint32_t * val)
 				{
 					utility::be32enc(&val[kk], ((std::uint32_t *)ptr_data)[kk]);
 				}
+#define USE_RANDOM_NONCE 1
 
+#if (defined USE_RANDOM_NONCE && USE_RANDOM_NONCE)
+				ptr_data[19] = std::rand();
+#else
 				ptr_data[19] = ++ptr_data[19];
+#endif // USE_RANDOM_NONCE
 
 				utility::be32enc(&val[19], ptr_data[19]);
             
+				nonce_start_ = val[19];
+
+				log_debug(
+					"Serial handler prepared nonce = " << nonce_start_ << "."
+				);
+
 				return true;
 			}
 		}
@@ -195,6 +240,12 @@ void serial_handler::send_test_work()
 		buffer[71] = 71;
 		buffer[73] = 73;
 		buffer[79] = 79;
+
+		nonce_start_ = reinterpret_cast<std::uint32_t *> (&buffer[0])[19];
+
+		log_debug(
+			"Serial handler prepared (test) nonce = " << nonce_start_ << "."
+		);
 
         i->write(
             reinterpret_cast<const char *> (&buffer[0]), buffer.size()

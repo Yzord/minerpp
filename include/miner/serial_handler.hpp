@@ -99,6 +99,11 @@ namespace miner {
              * The serial_port.
              */
             std::weak_ptr<serial_port> serial_port_;
+
+			/**
+			 * The start nonce.
+			 */
+			std::uint32_t nonce_start_;
     };
     
 } // namespace miner
