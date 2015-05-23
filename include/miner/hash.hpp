@@ -51,6 +51,15 @@ namespace miner {
                 const std::uint32_t & max_nonce, std::uint64_t & hashes_done,
                 std::uint32_t & nonce, bool & restart, bool & has_new_work
             );
+        
+            /**
+             * Checks the hash meets the given target.
+             * @param hash The hash.
+             * @param target The target.
+             */
+            static bool check(
+                const std::uint32_t * hash, const std::uint32_t * target
+            );
 
         private:
         

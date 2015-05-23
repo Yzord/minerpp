@@ -27,6 +27,7 @@
 #include <miner/serial_port.hpp>
 #include <miner/stack_impl.hpp>
 #include <miner/stratum_work.hpp>
+#include <miner/work_manager.hpp>
 
 using namespace miner;
 
@@ -251,6 +252,11 @@ std::shared_ptr<stratum_work> serial_port::work()
     std::lock_guard<std::mutex> l1(mutex_work_);
     
     return m_work ? std::make_shared<stratum_work> (*m_work) : 0;
+}
+
+void serial_port::submit_work(const std::shared_ptr<stratum_work> & val)
+{
+    stack_impl_.get_work_manager()->submit_work(val);
 }
 
 const double & serial_port::hashes_per_second() const

@@ -25,7 +25,27 @@
 
 using namespace miner;
 
-bool check_hash(const std::uint32_t * hash, const std::uint32_t * target)
+bool hash::scan(
+    const configuration::proof_of_work_type_t & type,
+    std::uint32_t * ptr_data, const std::uint32_t * ptr_target,
+    const std::uint32_t & max_nonce, std::uint64_t & hashes_done,
+    std::uint32_t & nonce, bool & restart, bool & has_new_work
+    )
+{
+    if (type == configuration::proof_of_work_type_whirlpool_xor)
+    {
+        return scan_whirlpool_xor(
+            ptr_data, ptr_target, max_nonce, hashes_done, nonce, restart,
+            has_new_work
+        );
+    }
+
+    log_error("Hash got invalid Proof-of-Work type = " << type << ".");
+    
+    return false;
+}
+
+bool hash::check(const std::uint32_t * hash, const std::uint32_t * target)
 {
 	bool ret = true;
 	
@@ -69,26 +89,6 @@ bool check_hash(const std::uint32_t * hash, const std::uint32_t * target)
 	return ret;
 }
 
-bool hash::scan(
-    const configuration::proof_of_work_type_t & type,
-    std::uint32_t * ptr_data, const std::uint32_t * ptr_target,
-    const std::uint32_t & max_nonce, std::uint64_t & hashes_done,
-    std::uint32_t & nonce, bool & restart, bool & has_new_work
-    )
-{
-    if (type == configuration::proof_of_work_type_whirlpool_xor)
-    {
-        return scan_whirlpool_xor(
-            ptr_data, ptr_target, max_nonce, hashes_done, nonce, restart,
-            has_new_work
-        );
-    }
-
-    log_error("Hash got invalid Proof-of-Work type = " << type << ".");
-    
-    return false;
-}
-
 bool hash::scan_whirlpool_xor(
     std::uint32_t * ptr_data, const std::uint32_t * ptr_target,
     const std::uint32_t & max_nonce, std::uint64_t & hashes_done,
@@ -124,7 +124,7 @@ bool hash::scan_whirlpool_xor(
         /**
          * First check.
          */
-        if ((hash64[7] & 0xFFFFFF00) == 0 && check_hash(hash64, ptr_target))
+        if ((hash64[7] & 0xFFFFFF00) == 0 && check(hash64, ptr_target))
         {
             hashes_done = nonce - first_nonce + 1;
 

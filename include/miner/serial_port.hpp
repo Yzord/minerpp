@@ -97,6 +97,12 @@ namespace miner {
             std::shared_ptr<stratum_work> work();
         
             /**
+             * Submits work with a solution.
+             * @param val The work.
+             */
+            void submit_work(const std::shared_ptr<stratum_work> & val);
+        
+            /**
              * The number of hashes per second.
              */
             const double & hashes_per_second() const;

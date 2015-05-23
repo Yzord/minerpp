@@ -20,12 +20,14 @@
 
 #include <cassert>
 
+#include <miner/hash.hpp>
 #include <miner/logger.hpp>
 #include <miner/serial.hpp>
 #include <miner/serial_handler.hpp>
 #include <miner/serial_port.hpp>
 #include <miner/stratum_work.hpp>
 #include <miner/utility.hpp>
+#include <miner/whirlpool.hpp>
 
 using namespace miner;
 
@@ -46,17 +48,12 @@ void serial_handler::set_has_new_work(const bool & val)
 {
     if (auto i = serial_port_.lock())
     {
-        /**
-         * Allocate the big endian data.
-         */
-        std::uint32_t endiandata[32];
-    
-        assert(sizeof(endiandata) == 128);
+        assert(sizeof(endian_data_) == 128);
 
         /**
          * Prepare the work.
          */
-        if (prepare_work(endiandata))
+        if (prepare_work(endian_data_))
         {
 #define USE_TEST_WORK 0
 
@@ -72,7 +69,7 @@ void serial_handler::set_has_new_work(const bool & val)
 			enum { work_length = 80 };
 
 			/**
-			 * Send 80 bytes of endiandata.
+			 * Send 80 bytes of endian_data_.
 			 */
             serial::message_t msg;
             
@@ -84,7 +81,7 @@ void serial_handler::set_has_new_work(const bool & val)
             buffer[0] = msg.type;
             buffer[1] = msg.length;
 
-			std::memcpy(&buffer[2], endiandata, work_length);
+			std::memcpy(&buffer[2], endian_data_, work_length);
 
 			/**
 			 * Print the work for debugging.
@@ -121,32 +118,19 @@ void serial_handler::set_needs_work_restart(const bool & val)
 {
     if (auto i = serial_port_.lock())
     {
-        /**
-         * Allocate the big endian data.
-         */
-        std::uint32_t endiandata[32];
-    
-        assert(sizeof(endiandata) == 128);
+        serial::message_t msg;
+        
+        msg.type = serial::message_type_restart;
+        msg.length = 0;
+        
+        std::vector<std::uint8_t> buffer(2);
+        
+        buffer[0] = msg.type;
+        buffer[1] = msg.length;
 
-        /**
-         * Prepare the work.
-         */
-        if (prepare_work(endiandata))
-        {
-            serial::message_t msg;
-            
-            msg.type = serial::message_type_restart;
-            msg.length = 0;
-            
-            std::vector<std::uint8_t> buffer(2);
-            
-            buffer[0] = msg.type;
-            buffer[1] = msg.length;
-
-            i->write(
-                reinterpret_cast<const char *> (&buffer[0]), buffer.size()
-            );
-        }
+        i->write(
+            reinterpret_cast<const char *> (&buffer[0]), buffer.size()
+        );
 	}
 }
 
@@ -155,21 +139,21 @@ bool serial_handler::prepare_work(std::uint32_t * val)
     if (auto i = serial_port_.lock())
     {
         /**
-         * Get the work.
+         * Get (a copy of) the work.
          */
-        const auto & work = i->work();
+        stratum_work_ = i->work();
         
 		/**
 		 * Generate the work.
 		 */
-		if (work && work->generate())
+		if (stratum_work_ && stratum_work_->generate())
 		{
 			/**
 			 * Prepare the work.
 			 */
-			if (work->data().size() > 0)
+			if (stratum_work_->data().size() > 0)
 			{
-				auto ptr_data = &work->data()[0];
+				auto ptr_data = &stratum_work_->data()[0];
 
 				for (auto kk = 0; kk < 32; kk++)
 				{
@@ -196,6 +180,73 @@ bool serial_handler::prepare_work(std::uint32_t * val)
 		}
     }
 
+    return false;
+}
+
+bool serial_handler::handle_result(const serial::message_t & msg)
+{
+    if (auto i = serial_port_.lock())
+    {
+		if (stratum_work_)
+		{
+            /**
+             * Allocate the nonce.
+             */
+            std::uint32_t nonce;
+
+            /**
+             * Copy the big-endian nonce from the result.
+             */
+            std::memcpy(&nonce, &msg.value[0], sizeof(std::uint32_t));
+            
+            log_debug("got nonce = " << nonce);
+
+            /**
+             * Set the nonce in the endian_data_.
+             */
+            endian_data_[19] = nonce;
+            
+            /**
+             * Decode the noce from big-endian.
+             */
+            nonce = utility::be32dec(&nonce);
+            
+            log_debug("got nonce = " << nonce);
+
+            /**
+             * Set the little-endian representation of the nonce in the work.
+             */
+            stratum_work_->data()[19] = nonce;
+            
+            /**
+             * Allocate the digest buffer.
+             */
+            std::uint32_t hash64[16];
+            
+            /**
+             * Hash the work.
+             */
+            whirlpool_xor(
+                reinterpret_cast<std::uint8_t *> (&endian_data_[0]), 80,
+                reinterpret_cast<std::uint8_t *> (&hash64[0])
+            );
+            
+            /**
+             * Perform a pre-check on the hashes bits.
+             */
+            if ((hash64[7] & 0xFFFFFF00) == 0)
+            {
+                assert(stratum_work_->data()[19] == nonce);
+
+                return hash::check(hash64, stratum_work_->target());
+            }
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+    
     return false;
 }
 
@@ -241,7 +292,7 @@ void serial_handler::send_test_work()
 		buffer[73] = 73;
 		buffer[79] = 79;
 
-		nonce_start_ = reinterpret_cast<std::uint32_t *> (&buffer[0])[19];
+		nonce_start_ = *reinterpret_cast<std::uint32_t *> (&buffer[2 + 76]);
 
 		log_debug(
 			"Serial handler prepared (test) nonce = " << nonce_start_ << "."

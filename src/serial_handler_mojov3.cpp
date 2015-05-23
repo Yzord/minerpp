@@ -21,6 +21,7 @@
 #include <miner/logger.hpp>
 #include <miner/serial_port.hpp>
 #include <miner/serial_handler_mojov3.hpp>
+#include <miner/stack_impl.hpp>
 
 using namespace miner;
 
@@ -261,14 +262,35 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 
 				if (nonce == nonce_start_)
 				{
-					log_debug("Correct");
+					log_debug("Correct echo'd nonce from (pool work)");
 				}
 				else if (nonce == 0)
 				{
-					log_debug("Correct (test work)");
+					log_debug("Correct echo'd nonce from (test work)");
 				}
-                
-				// :TODO: if (handle_result(msg))
+
+                /**
+                 * Handle the result.
+                 */
+                if (handle_result(msg))
+                {
+                    log_info("Serial handler MojoV3 is submitting work.");
+
+                    if (auto i = serial_port_.lock())
+                    {
+                        if (stratum_work_)
+                        {
+                            /**
+                             * Submit the work.
+                             */
+                            i->submit_work(stratum_work_);
+                        }
+                        else
+                        {
+                            assert(0);
+                        }
+                    }
+                }
 			}
 			break;
 			case serial::message_type_error:

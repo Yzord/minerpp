@@ -27,10 +27,12 @@
 #include <boost/asio.hpp>
 
 #include <miner/handler.hpp>
+#include <miner/serial.hpp>
 
 namespace miner {
 
     class serial_port;
+    class stratum_work;
     
     /**
      * Implements a serial handler.
@@ -86,6 +88,12 @@ namespace miner {
             bool prepare_work(std::uint32_t * val);
 
 			/**
+			 * Handles a result message.
+			 * @param msg The serial::message.
+			 */
+			bool handle_result(const serial::message_t & msg);
+        
+			/**
 			 * Sends test work to the device.
 			 */
 			void send_test_work();
@@ -99,7 +107,17 @@ namespace miner {
              * The serial_port.
              */
             std::weak_ptr<serial_port> serial_port_;
+        
+            /**
+             * The work.
+             */
+            std::shared_ptr<stratum_work> stratum_work_;
 
+            /**
+             * The big endian data.
+             */
+            std::uint32_t endian_data_[32];
+        
 			/**
 			 * The start nonce.
 			 */
