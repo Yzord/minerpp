@@ -18,6 +18,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cassert>
+
 #include <miner/hash.hpp>
 #include <miner/logger.hpp>
 #include <miner/utility.hpp>
@@ -87,6 +89,21 @@ bool hash::check(const std::uint32_t * hash, const std::uint32_t * target)
 	}
 
 	return ret;
+}
+
+void hash::final(
+    const configuration::proof_of_work_type_t & type,
+    const std::uint8_t * buf, const std::size_t & len, std::uint8_t * digest
+    )
+{
+    if (type == configuration::proof_of_work_type_whirlpool_xor)
+    {
+        whirlpool_xor(buf, len, digest);
+    }
+    else
+    {
+        assert(0);
+    }
 }
 
 bool hash::scan_whirlpool_xor(

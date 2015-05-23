@@ -226,7 +226,8 @@ bool serial_handler::handle_result(const serial::message_t & msg)
             /**
              * Hash the work.
              */
-            whirlpool_xor(
+            hash::final(
+                configuration::instance().proof_of_work_type(),
                 reinterpret_cast<std::uint8_t *> (&endian_data_[0]), 80,
                 reinterpret_cast<std::uint8_t *> (&hash64[0])
             );

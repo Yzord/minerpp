@@ -60,6 +60,19 @@ namespace miner {
             static bool check(
                 const std::uint32_t * hash, const std::uint32_t * target
             );
+        
+            /**
+             * Performs the hash given proof_of_work_type_t.
+             * @param type The configuration::proof_of_work_type_t.
+             * @param buf The buffer.
+             * @param len The length.
+             * @param digest The digest.
+             */
+            static void final(
+                const configuration::proof_of_work_type_t & type,
+                const std::uint8_t * buf, const std::size_t & len,
+                std::uint8_t * digest
+            );
 
         private:
         
