@@ -22,6 +22,7 @@
 #define MINER_GPU_HANDLER_OPENCL_HPP
 
 #include <memory>
+#include <string>
 
 #define USE_OPENCL 0
 
@@ -30,6 +31,7 @@
 #endif // USE_OPENCL
 
 #include <miner/gpu_handler.hpp>
+#include <miner/logger.hpp>
 
 namespace miner {
 
@@ -48,6 +50,14 @@ namespace miner {
              */
             explicit gpu_handler_opencl(std::shared_ptr<gpu> owner)
                 : gpu_handler(owner)
+            {
+                // ...
+            }
+        
+            /**
+             * Starts
+             */
+            virtual void start()
             {
 #if (defined USE_OPENCL && USE_OPENCL)
                 if (
@@ -78,6 +88,94 @@ namespace miner {
                 {
                     throw std::runtime_error("clCreateCommandQueue failed");
 
+                }
+                
+                static const char * g_kernel_source = "__kernel void scan();\n";
+                
+                cl_program_ = clCreateProgramWithSource(
+                    cl_context_, 1, (const char **)&g_kernel_source, 0, &error
+                );
+                
+                if (cl_program_ == 0)
+                {
+                    throw std::runtime_error(
+                        "clCreateProgramWithSource failed"
+                    );
+                }
+                
+                error = clBuildProgram(cl_program_, 0, 0, 0, 0, 0);
+                
+                if (error != CL_SUCCESS)
+                {
+                    std::size_t len;
+                    
+                    char buf[2048];
+
+                    clGetProgramBuildInfo(
+                        cl_program_, cl_device_id_, CL_PROGRAM_BUILD_LOG,
+                        sizeof(buf), buf, &len
+                    );
+                    
+                    log_error(
+                        "GPU handler OpenCL clBuildProgram failed, "
+                        "ProgramBuildInfo = " <<
+                        std::string(buf, len) << "."
+                    );
+
+                    throw std::runtime_error("clBuildProgram failed");
+                }
+    
+                cl_kernel_ = clCreateKernel(cl_program_, "scan", &error);
+                
+                if (cl_kernel_ == 0 || error != CL_SUCCESS)
+                {
+                    throw std::runtime_error("clCreateKernel failed");
+                }
+                
+                enum { data_length = 1024 };
+                
+                cl_mem_input_ = clCreateBuffer(
+                    cl_context_, CL_MEM_READ_ONLY,
+                    sizeof(float) * data_length,
+                    0, 0
+                );
+                
+                cl_mem_output_ = clCreateBuffer(
+                    cl_context_, CL_MEM_WRITE_ONLY,
+                    sizeof(float) * data_length, 0, 0
+                );
+                
+                if (cl_mem_input_ == 0 || cl_mem_output_ == 0)
+                {
+                    throw std::runtime_error("clCreateBuffer failed");
+                }
+#endif // USE_OPENCL
+            }
+        
+            /**
+             * Stops
+             */
+            virtual void stop()
+            {
+#if (defined USE_OPENCL && USE_OPENCL)
+                if (cl_program_)
+                {
+                    clReleaseProgram(cl_program_);
+                }
+                
+                if (cl_kernel_)
+                {
+                    clReleaseKernel(cl_kernel_);
+                }
+                
+                if (cl_context_)
+                {
+                    clReleaseContext(cl_context_);
+                }
+                
+                if (cl_command_queue_)
+                {
+                    clReleaseCommandQueue(cl_command_queue_);
                 }
 #endif // USE_OPENCL
             }
@@ -130,6 +228,26 @@ namespace miner {
              * The cl_command_queue.
              */
             cl_command_queue cl_command_queue_;
+        
+            /**
+             * The cl_program.
+             */
+            cl_program cl_program_;
+        
+            /**
+             * The cl_kernel.
+             */
+            cl_kernel cl_kernel_;
+        
+            /**
+             * The cl_mem input.
+             */
+            cl_mem cl_mem_input_;
+        
+            /**
+             * The cl_mem output.
+             */
+            cl_mem cl_mem_output_;
 #endif // USE_OPENCL
     };
     

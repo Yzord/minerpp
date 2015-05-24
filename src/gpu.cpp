@@ -82,6 +82,14 @@ void gpu::start()
     }
     
     /**
+     * Start the gpu_handler.
+     */
+    if (m_gpu_handler)
+    {
+        m_gpu_handler->start();
+    }
+    
+    /**
      * Allocate the std::thread.
      */
     thread_ = std::thread(&gpu::loop, shared_from_this());
@@ -92,6 +100,14 @@ void gpu::stop()
     log_debug("GPU is stopping.");
     
     state_ = state_stopped;
+    
+    /**
+     * Stop the gpu_handler.
+     */
+    if (m_gpu_handler)
+    {
+        m_gpu_handler->stop();
+    }
     
     /**
      * Set that we need to restart work to abort the inner mining loops.

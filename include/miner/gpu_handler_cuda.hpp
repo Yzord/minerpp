@@ -47,6 +47,22 @@ namespace miner {
             }
         
             /**
+             * Starts
+             */
+            virtual void start()
+            {
+                assert(0);
+            }
+        
+            /**
+             * Stops
+             */
+            virtual void stop()
+            {
+                assert(0);
+            }
+        
+            /**
              * The read handler.
              * @param buf The buffer.
              * @param len The length.

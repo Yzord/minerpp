@@ -43,6 +43,16 @@ namespace miner {
             explicit gpu_handler(std::shared_ptr<gpu> owner);
         
             /**
+             * Starts
+             */
+            virtual void start() = 0;
+        
+            /**
+             * Stops
+             */
+            virtual void stop() = 0;
+            
+            /**
              * The read handler.
              * @param buf The buffer.
              * @param len The length.
