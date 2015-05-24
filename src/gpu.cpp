@@ -191,7 +191,7 @@ void gpu::set_work(const std::shared_ptr<stratum_work> & val)
 
 std::shared_ptr<stratum_work> gpu::work()
 {
-    std::lock_guard<std::mutex> l1(mutex_work_);
+    std::lock_guard<std::recursive_mutex> l1(mutex_work_);
     
     return m_work ? std::make_shared<stratum_work> (*m_work) : 0;
 }

@@ -142,9 +142,9 @@ namespace miner {
             std::thread thread_;
         
             /**
-             * The work std::mutex.
+             * The work std::recursive_mutex.
              */
-            std::mutex mutex_work_;
+            std::recursive_mutex mutex_work_;
         
             /**
              * If true we have new work.
