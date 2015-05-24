@@ -21,6 +21,7 @@
 #ifndef MINER_GPU_HANDLER_OPENCL_HPP
 #define MINER_GPU_HANDLER_OPENCL_HPP
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -32,6 +33,7 @@
 
 #include <miner/gpu_handler.hpp>
 #include <miner/logger.hpp>
+#include <miner/stratum_work.hpp>
 
 namespace miner {
 
@@ -43,6 +45,8 @@ namespace miner {
     class gpu_handler_opencl : public gpu_handler
     {
         public:
+        
+            enum { buffer_size = sizeof(std::uint32_t) * 0x100 };
         
             /**
              * Constructor
@@ -87,13 +91,15 @@ namespace miner {
                 if (cl_command_queue_ == 0)
                 {
                     throw std::runtime_error("clCreateCommandQueue failed");
-
                 }
                 
-                static const char * g_kernel_source = "__kernel void scan();\n";
-                
+                const char * g_kernel_source_whirlpool =
+                    "\n"
+                ;
+
                 cl_program_ = clCreateProgramWithSource(
-                    cl_context_, 1, (const char **)&g_kernel_source, 0, &error
+                    cl_context_, 1, (const char **)&g_kernel_source_whirlpool,
+                    0, &error
                 );
                 
                 if (cl_program_ == 0)
@@ -109,7 +115,7 @@ namespace miner {
                 {
                     std::size_t len;
                     
-                    char buf[2048];
+                    char buf[2048 * 8];
 
                     clGetProgramBuildInfo(
                         cl_program_, cl_device_id_, CL_PROGRAM_BUILD_LOG,
@@ -118,31 +124,28 @@ namespace miner {
                     
                     log_error(
                         "GPU handler OpenCL clBuildProgram failed, "
-                        "ProgramBuildInfo = " <<
-                        std::string(buf, len) << "."
+                        "ProgramBuildInfo = " << std::string(buf, len) << "."
                     );
 
                     throw std::runtime_error("clBuildProgram failed");
                 }
     
-                cl_kernel_ = clCreateKernel(cl_program_, "scan", &error);
+                cl_kernel_ = clCreateKernel(cl_program_, "search", &error);
                 
                 if (cl_kernel_ == 0 || error != CL_SUCCESS)
                 {
                     throw std::runtime_error("clCreateKernel failed");
                 }
-                
-                enum { data_length = 1024 };
-                
+
                 cl_mem_input_ = clCreateBuffer(
                     cl_context_, CL_MEM_READ_ONLY,
-                    sizeof(float) * data_length,
+                    sizeof(float) * buffer_size,
                     0, 0
                 );
                 
                 cl_mem_output_ = clCreateBuffer(
                     cl_context_, CL_MEM_WRITE_ONLY,
-                    sizeof(float) * data_length, 0, 0
+                    sizeof(float) * buffer_size, 0, 0
                 );
                 
                 if (cl_mem_input_ == 0 || cl_mem_output_ == 0)
@@ -196,7 +199,10 @@ namespace miner {
              */
             virtual void set_has_new_work(const bool & val)
             {
-                assert(0);
+                if (prepare_work(endian_data_))
+                {
+                    should_run_ = true;
+                }
             }
         
             /**
@@ -205,7 +211,15 @@ namespace miner {
              */
             virtual void set_needs_work_restart(const bool & val)
             {
-                assert(0);
+                // ...
+            }
+        
+            /**
+             * Runs the loop.
+             */
+            virtual void run()
+            {
+                // ...
             }
         
         private:

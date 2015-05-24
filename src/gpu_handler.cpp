@@ -22,11 +22,15 @@
 
 #include <miner/gpu.hpp>
 #include <miner/gpu_handler.hpp>
+#include <miner/logger.hpp>
+#include <miner/stratum_work.hpp>
+#include <miner/utility.hpp>
 
 using namespace miner;
 
 gpu_handler::gpu_handler(std::shared_ptr<gpu> owner)
-    : gpu_(owner)
+    : should_run_(false)
+    , gpu_(owner)
 {
     // ...
 }
@@ -44,4 +48,49 @@ void gpu_handler::set_has_new_work(const bool & val)
 void gpu_handler::set_needs_work_restart(const bool & val)
 {
     assert(0);
+}
+
+void gpu_handler::run()
+{
+    assert(0);
+}
+
+bool gpu_handler::prepare_work(std::uint32_t * val)
+{
+    if (auto i = gpu_.lock())
+    {
+        /**
+         * Get (a copy of) the work.
+         */
+        stratum_work_ = i->work();
+        
+		/**
+		 * Generate the work.
+		 */
+		if (stratum_work_ && stratum_work_->generate())
+		{
+			/**
+			 * Prepare the work.
+			 */
+			if (stratum_work_->data().size() > 0)
+			{
+				auto ptr_data = &stratum_work_->data()[0];
+
+				for (auto kk = 0; kk < 32; kk++)
+				{
+					utility::be32enc(&val[kk], ((std::uint32_t *)ptr_data)[kk]);
+				}
+
+				utility::be32enc(&val[19], ptr_data[19]);
+
+				log_debug(
+					"GPU handler prepared nonce = " << val[19] << "."
+				);
+
+				return true;
+			}
+		}
+    }
+
+    return false;
 }

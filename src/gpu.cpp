@@ -210,10 +210,12 @@ void gpu::loop()
     {
         if (m_gpu_handler)
         {
-            // ...
+            m_gpu_handler->run();
         }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
     }
 }
 

@@ -90,6 +90,14 @@ namespace miner {
                 assert(0);
             }
         
+            /**
+             * Runs the loop.
+             */
+            virtual void run()
+            {
+                assert(0);
+            }
+        
         private:
         
             // ...

@@ -21,6 +21,7 @@
 #ifndef MINER_GPU_HANDLER_HPP
 #define MINER_GPU_HANDLER_HPP
 
+#include <cstdint>
 #include <memory>
 
 #include <miner/handler.hpp>
@@ -28,6 +29,7 @@
 namespace miner {
 
     class gpu;
+    class stratum_work;
     
     /**
      * Implements a GPU handler.
@@ -70,7 +72,12 @@ namespace miner {
              * @param val The value.
              */
             virtual void set_needs_work_restart(const bool & val);
-            
+        
+            /**
+             * Runs the loop.
+             */
+            virtual void run() = 0;
+        
         private:
         
             // ...
@@ -78,9 +85,29 @@ namespace miner {
         protected:
         
             /**
+             * If true we should be running.
+             */
+            bool should_run_;
+        
+            /**
+             * Prepares work (80 bytes work of big endian data) for the device.
+             */
+            bool prepare_work(std::uint32_t * val);
+        
+            /**
              * The gpu.
              */
             std::weak_ptr<gpu> gpu_;
+        
+            /**
+             * The work.
+             */
+            std::shared_ptr<stratum_work> stratum_work_;
+        
+            /**
+             * The big endian data.
+             */
+            std::uint32_t endian_data_[32];
     };
     
 } // namespace miner
