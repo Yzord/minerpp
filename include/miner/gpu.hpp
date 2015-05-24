@@ -68,6 +68,11 @@ namespace miner {
             void set_work(const std::shared_ptr<stratum_work> & val);
         
             /**
+             * Returns a copy of thw work.
+             */
+            std::shared_ptr<stratum_work> work();
+            
+            /**
              * The number of hashes per second.
              */
             const double & hashes_per_second() const;
