@@ -55,13 +55,23 @@ void serial_handler::set_has_new_work(const bool & val)
          */
         if (prepare_work(endian_data_))
         {
+
 #define USE_TEST_WORK 0
+#define USE_WORK_MIDSTATE 0
 
 #if (defined USE_TEST_WORK && USE_TEST_WORK)
+
+#if (defined USE_WORK_MIDSTATE && USE_WORK_MIDSTATE)
+			/**
+			 * Send test work (midstate).
+			 */
+			send_test_work_midstate64();
+#else
 			/**
 			 * Send test work.
 			 */
 			send_test_work();
+#endif // USE_WORK_MIDSTATE
 #else
 			/**
 			 * The work length.
@@ -159,14 +169,7 @@ bool serial_handler::prepare_work(std::uint32_t * val)
 				{
 					utility::be32enc(&val[kk], ((std::uint32_t *)ptr_data)[kk]);
 				}
-#define USE_RANDOM_NONCE 1
-
-#if (defined USE_RANDOM_NONCE && USE_RANDOM_NONCE)
-				ptr_data[19] = std::rand();
-#else
-				ptr_data[19] = ++ptr_data[19];
-#endif // USE_RANDOM_NONCE
-
+                
 				utility::be32enc(&val[19], ptr_data[19]);
             
 				nonce_start_ = val[19];
@@ -303,4 +306,154 @@ void serial_handler::send_test_work()
             reinterpret_cast<const char *> (&buffer[0]), buffer.size()
         );
 	}
+}
+
+void serial_handler::send_test_work_midstate64()
+{
+    if (auto i = serial_port_.lock())
+    {
+		/**
+		 * The work length.
+		 */
+		enum { work_length = 88 };
+        
+        serial::message_t msg;
+        
+        msg.type = serial::message_type_test_work_midstate64;
+        msg.length = work_length;
+            
+        std::vector<std::uint8_t> buffer(2 + work_length, 0);
+            
+        buffer[0] = msg.type;
+        buffer[1] = msg.length;
+        
+		/**
+		 * Test work (genesis block).
+         * 64 bytes midstate (big-endian)
+         * 20 (last) bytes of the work (big-endian)
+         * 32-bit target (little-endian)
+         *
+         * std::uint32_t version;
+         * std::uint8_t hash_previous_block[32];
+         * std::uint8_t hash_merkle_root[32];
+         * std::uint32_t timestamp;
+         * std::uint32_t bits;
+         * std::uint32_t nonce;
+         *
+         * version: 1
+         * hash: 15e96604fbcf7cd7e93d072a06f07ccfe1f8fd0099270a075c761c447403a783
+         * time: 1419310800
+         * nonce: 1419300800
+         * bits: 1e0fffff
+         */
+        auto block_header = utility::from_hex(
+            "0100000000000000000000000000000000000000000000000000000000000"
+            "00000000000682e0e40ac3516cb44839d92f2381d7267aff0b0faac4cb1cc"
+            "ffcbcffd22dce6d0f69854ffff0f1ec0cf9854"
+        );
+        
+        assert(block_header.size() == 80);
+
+        /**
+         * Check genesis hash.
+         */
+        std::vector<std::uint8_t> digest(64, 0);
+        
+        /**
+         * Hash the genesis block header.
+         */
+        hash::final(
+            configuration::proof_of_work_type_whirlpool_xor,
+            &block_header[0], block_header.size(), &digest[0]
+        );
+        
+        std::reverse(&digest[0], &digest[32]);
+
+        /**
+         * Get the hexidecimal representation of the digest.
+         */
+        auto hash = utility::to_hex(&digest[0], &digest[32]);
+
+        log_debug("hash = " << hash);
+        
+        /**
+         * Validate the hash matches the genesis block hash.
+         */
+        assert(
+            hash ==
+            "15e96604fbcf7cd7e93d072a06f07ccfe1f8fd0099270a075c761c447403a783"
+        );
+        
+        /**
+         * Prepare the work.
+         */
+        auto ptr_data = &block_header[0];
+
+        /**
+         * The big endian data.
+         */
+        std::uint32_t endian_data[32];
+        
+        for (auto kk = 0; kk < 32; kk++)
+        {
+            utility::be32enc(&endian_data[kk], ((std::uint32_t *)ptr_data)[kk]);
+        }
+        
+        utility::be32enc(&endian_data[19], ptr_data[19]);
+
+        /**
+         * Allocate the midstate.
+         */
+        std::uint64_t midstate[8];
+        
+        log_debug(
+            "Serial handler calculated midstate = " <<
+            utility::to_hex(reinterpret_cast<std::uint8_t *> (&midstate[0]),
+            reinterpret_cast<std::uint8_t *> (&midstate[0]) + sizeof(midstate))
+        );
+
+        /**
+         * Calculate midstate.
+         */
+        whirlpool_midstate(
+            reinterpret_cast<const std::uint8_t *>(endian_data), midstate
+        );
+
+        /**
+         * Append the midstate to the message.
+         */
+        buffer.insert(
+            buffer.end(), midstate, midstate + sizeof(midstate)
+        );
+
+        /**
+         * Append the work to the message.
+         */
+        buffer.insert(
+            buffer.end(), &endian_data[14], &endian_data[19]
+        );
+        
+        /**
+         * The target.
+         */
+        std::uint32_t target = 504365055;
+        
+        /**
+         * Append the target to the message.
+         */
+        buffer.insert(
+            buffer.end(), &target, &target + sizeof(target)
+        );
+    
+		nonce_start_ = 0;
+
+		log_debug(
+			"Serial handler prepared (test mid-state) nonce = " <<
+            nonce_start_ << "."
+		);
+
+        i->write(
+            reinterpret_cast<const char *> (&buffer[0]), buffer.size()
+        );
+    }
 }

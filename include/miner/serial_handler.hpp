@@ -98,6 +98,11 @@ namespace miner {
 			 */
 			void send_test_work();
 
+			/**
+			 * Sends test work (midstate) to the device.
+			 */
+            void send_test_work_midstate64();
+        
             /**
              * The boost::asio::strand.
              */
