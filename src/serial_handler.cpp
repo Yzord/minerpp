@@ -373,8 +373,6 @@ void serial_handler::send_test_work_midstate64()
          * Get the hexidecimal representation of the digest.
          */
         auto hash = utility::to_hex(&digest[0], &digest[32]);
-
-        log_debug("hash = " << hash);
         
         /**
          * Validate the hash matches the genesis block hash.
