@@ -23,6 +23,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 
 #include <miner/handler.hpp>
 
@@ -83,6 +84,11 @@ namespace miner {
             // ...
         
         protected:
+        
+            /**
+             * The work std::mutex.
+             */
+            std::mutex mutex_work_;
         
             /**
              * If true we should be running.

@@ -59,6 +59,8 @@ bool gpu_handler::prepare_work(std::uint32_t * val)
 {
     if (auto i = gpu_.lock())
     {
+        std::lock_guard<std::mutex> l1(mutex_work_);
+        
         /**
          * Get (a copy of) the work.
          */
