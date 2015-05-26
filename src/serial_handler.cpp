@@ -403,12 +403,6 @@ void serial_handler::send_test_work_midstate64()
          * Allocate the midstate.
          */
         std::uint64_t midstate[8];
-        
-        log_debug(
-            "Serial handler calculated midstate = " <<
-            utility::to_hex(reinterpret_cast<std::uint8_t *> (&midstate[0]),
-            reinterpret_cast<std::uint8_t *> (&midstate[0]) + sizeof(midstate))
-        );
 
         /**
          * Calculate midstate.
@@ -417,6 +411,12 @@ void serial_handler::send_test_work_midstate64()
             reinterpret_cast<const std::uint8_t *>(endian_data), midstate
         );
 
+        log_debug(
+            "Serial handler calculated midstate = " <<
+            utility::to_hex(reinterpret_cast<std::uint8_t *> (&midstate[0]),
+            reinterpret_cast<std::uint8_t *> (&midstate[0]) + sizeof(midstate))
+        );
+        
         /**
          * Append the midstate to the message.
          */
