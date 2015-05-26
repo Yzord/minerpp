@@ -44,4 +44,11 @@ void whirlpool_xor(
     const std::uint8_t * buf, const std::size_t & len, std::uint8_t * digest
 );
 
+/**
+ * Calculates the 64 byte mid-state.
+ * @param buf The buffer.
+ * @param midstate The mid-state buffer.
+ */
+void whirlpool_midstate(const std::uint8_t * buf, std::uint64_t * midstate);
+
 #endif // MINER_WHIRLPOOL_HPP

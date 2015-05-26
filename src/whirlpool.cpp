@@ -20,6 +20,8 @@
 
 #include <stdio.h>
 
+#include <algorithm>
+
 #include <miner/whirlpool.hpp>
 
 #if UINT_MAX >= 4294967295UL
@@ -1045,6 +1047,17 @@ void whirlpool(
     whirlpool_add(buf, len, &ctx);
     
     whirlpool_final(&ctx, digest);
+}
+
+void whirlpool_midstate(const std::uint8_t * buf, std::uint64_t * midstate)
+{
+    whirlpool_ctx_t ctx;
+    
+    whirlpool_init(&ctx);
+    
+    whirlpool_add(buf, 64, &ctx);
+
+    std::memcpy(midstate, ctx.hash, sizeof(ctx.hash));
 }
 
 bool whirlpool_test();
