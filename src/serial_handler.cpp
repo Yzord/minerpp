@@ -443,7 +443,7 @@ void serial_handler::send_test_work_midstate64()
             buffer.end(), &target, &target + sizeof(target)
         );
     
-		nonce_start_ = 0;
+		nonce_start_ = 1419300800;
 
 		log_debug(
 			"Serial handler prepared (test mid-state) nonce = " <<
