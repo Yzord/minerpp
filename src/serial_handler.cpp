@@ -319,7 +319,7 @@ void serial_handler::send_test_work_midstate64()
         
         serial::message_t msg;
         
-        msg.type = serial::message_type_test_work_midstate64;
+        msg.type = serial::message_type_test_work;
         msg.length = work_length;
             
         std::vector<std::uint8_t> buffer(2 + work_length, 0);
