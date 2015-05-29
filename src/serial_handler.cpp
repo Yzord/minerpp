@@ -55,9 +55,8 @@ void serial_handler::set_has_new_work(const bool & val)
          */
         if (prepare_work(endian_data_))
         {
-
-#define USE_TEST_WORK 0
-#define USE_WORK_MIDSTATE 0
+#define USE_TEST_WORK 1
+#define USE_WORK_MIDSTATE 1
 
 #if (defined USE_TEST_WORK && USE_TEST_WORK)
 
@@ -72,6 +71,10 @@ void serial_handler::set_has_new_work(const bool & val)
 			 */
 			send_test_work();
 #endif // USE_WORK_MIDSTATE
+#else
+
+#if (defined USE_WORK_MIDSTATE && USE_WORK_MIDSTATE)
+			send_work_midstate64();
 #else
 			/**
 			 * The work length.
@@ -93,33 +96,11 @@ void serial_handler::set_has_new_work(const bool & val)
 
 			std::memcpy(&buffer[2], endian_data_, work_length);
 
-			/**
-			 * Print the work for debugging.
-			 */
-
-			auto index = 0;
-
-			printf("work: ");
-
-			for (auto & i : buffer)
-			{
-				if (index > 1)
-				{
-					printf("%d", (unsigned)i);
-				}
-
-				if (index++ == 81)
-				{
-					break;
-				}
-			}
-
-			printf("\n");
-
             i->write(
                 reinterpret_cast<const char *> (&buffer[0]), buffer.size()
             );
-#endif
+#endif // USE_WORK_MIDSTATE
+#endif // USE_TEST_WORK
         }
     }
 }
@@ -308,6 +289,99 @@ void serial_handler::send_test_work()
 	}
 }
 
+void serial_handler::send_work_midstate64()
+{
+    if (auto i = serial_port_.lock())
+    {
+		/**
+		 * The work length.
+		 */
+		enum { work_length = 92 };
+        
+        serial::message_t msg;
+        
+        msg.type = serial::message_type_new_work;
+        msg.length = work_length;
+            
+        std::vector<std::uint8_t> buffer(2, 0);
+            
+        buffer[0] = msg.type;
+        buffer[1] = msg.length;
+
+        /**
+         * Allocate the midstate.
+         */
+        std::uint64_t midstate[8];
+
+        /**
+         * Calculate midstate.
+         */
+        whirlpool_midstate(
+            reinterpret_cast<const std::uint8_t *>(endian_data_), midstate
+        );
+
+        log_debug(
+            "Serial handler calculated midstate = " <<
+            utility::to_hex(reinterpret_cast<std::uint8_t *> (&midstate[0]),
+            reinterpret_cast<std::uint8_t *> (&midstate[0]) + sizeof(midstate))
+        );
+
+        /**
+         * Append the midstate to the message.
+         */
+        buffer.insert(
+            buffer.end(), midstate, midstate + sizeof(midstate)
+        );
+
+        /**
+         * Append the work to the message.
+         */
+        buffer.insert(
+            buffer.end(), reinterpret_cast<std::uint8_t *> (&endian_data_) + 60,
+			reinterpret_cast<std::uint8_t *> (&endian_data_) + 80
+        );
+
+        /**
+         * The target.
+         */
+        std::uint32_t target = stratum_work_->target()[6];
+
+		log_debug("Serial handler prepared target = " << target << ".");
+        
+        /**
+         * Append the target to the message.
+         */
+        buffer.insert(
+            buffer.end(), &target, &target + sizeof(target)
+        );
+
+		/**
+		 * The end nonce.
+		 */
+		std::uint32_t nonce_end = std::numeric_limits<std::uint32_t>::max();
+
+        /**
+         * Append the nonce_end to the message.
+         */
+        buffer.insert(
+            buffer.end(), &nonce_end, &nonce_end + sizeof(nonce_end)
+        );
+
+		nonce_start_ = endian_data_[19];
+
+		log_debug(
+			"Serial handler prepared (mid-state), size = " << buffer.size()  <<
+			", nonce = " << nonce_start_ << "."
+		);
+
+		assert(buffer.size() == 2 + work_length);
+
+        i->write(
+            reinterpret_cast<const char *> (&buffer[0]), buffer.size()
+        );
+	}
+}
+
 void serial_handler::send_test_work_midstate64()
 {
     if (auto i = serial_port_.lock())
@@ -315,14 +389,14 @@ void serial_handler::send_test_work_midstate64()
 		/**
 		 * The work length.
 		 */
-		enum { work_length = 88 };
+		enum { work_length = 92 };
         
         serial::message_t msg;
         
         msg.type = serial::message_type_test_work;
         msg.length = work_length;
             
-        std::vector<std::uint8_t> buffer(2 + work_length, 0);
+        std::vector<std::uint8_t> buffer(2, 0);
             
         buffer[0] = msg.type;
         buffer[1] = msg.length;
@@ -332,6 +406,7 @@ void serial_handler::send_test_work_midstate64()
          * 64 bytes midstate (big-endian)
          * 20 (last) bytes of the work (big-endian)
          * 32-bit target (little-endian)
+		 * 32-bit nonce_end (little-endian)
          *
          * std::uint32_t version;
          * std::uint8_t hash_previous_block[32];
@@ -385,18 +460,20 @@ void serial_handler::send_test_work_midstate64()
         /**
          * Prepare the work.
          */
-        auto ptr_data = &block_header[0];
+        auto ptr_data = reinterpret_cast<std::uint32_t *> (&block_header[0]);
 
         /**
          * The big endian data.
          */
         std::uint32_t endian_data[32];
         
+		std::memcpy(endian_data, &block_header[0], 80);
+
         for (auto kk = 0; kk < 32; kk++)
         {
             utility::be32enc(&endian_data[kk], ((std::uint32_t *)ptr_data)[kk]);
         }
-        
+
         utility::be32enc(&endian_data[19], ptr_data[19]);
 
         /**
@@ -416,7 +493,7 @@ void serial_handler::send_test_work_midstate64()
             utility::to_hex(reinterpret_cast<std::uint8_t *> (&midstate[0]),
             reinterpret_cast<std::uint8_t *> (&midstate[0]) + sizeof(midstate))
         );
-        
+
         /**
          * Append the midstate to the message.
          */
@@ -428,9 +505,10 @@ void serial_handler::send_test_work_midstate64()
          * Append the work to the message.
          */
         buffer.insert(
-            buffer.end(), &endian_data[14], &endian_data[19]
+            buffer.end(), reinterpret_cast<std::uint8_t *> (&endian_data) + 60,
+			reinterpret_cast<std::uint8_t *> (&endian_data) + 80
         );
-        
+
         /**
          * The target.
          */
@@ -442,13 +520,27 @@ void serial_handler::send_test_work_midstate64()
         buffer.insert(
             buffer.end(), &target, &target + sizeof(target)
         );
-    
-		nonce_start_ = 1419300800;
+
+		/**
+		 * The end nonce.
+		 */
+		std::uint32_t nonce_end = std::numeric_limits<std::uint32_t>::max();
+
+        /**
+         * Append the nonce_end to the message.
+         */
+        buffer.insert(
+            buffer.end(), &nonce_end, &nonce_end + sizeof(nonce_end)
+        );
+
+		nonce_start_ = endian_data[19];
 
 		log_debug(
-			"Serial handler prepared (test mid-state) nonce = " <<
-            nonce_start_ << "."
+			"Serial handler prepared (test mid-state), size = " << buffer.size()  <<
+			", nonce = " << nonce_start_ << "."
 		);
+
+		assert(buffer.size() == 2 + work_length);
 
         i->write(
             reinterpret_cast<const char *> (&buffer[0]), buffer.size()

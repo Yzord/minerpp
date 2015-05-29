@@ -255,18 +255,18 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 					"got message_type_result, msg.length = " <<
 					(unsigned)msg.length
 				);
-
+				
 				std::uint32_t nonce;
 
 				std::memcpy(&nonce, &msg.value[0], sizeof(std::uint32_t));
 
 				if (nonce == nonce_start_)
 				{
-					log_debug("Correct echo'd nonce from (pool work)");
+					log_debug("Correct");
 				}
 				else if (nonce == 0)
 				{
-					log_debug("Correct echo'd nonce from (test work)");
+					log_debug("Correct (test work)");
 				}
 
                 /**

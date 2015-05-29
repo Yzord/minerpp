@@ -99,6 +99,11 @@ namespace miner {
 			void send_test_work();
 
 			/**
+			 * Sends work (midstate) to the device.
+			 */
+			void send_work_midstate64();
+
+			/**
 			 * Sends test work (midstate) to the device.
 			 */
             void send_test_work_midstate64();
