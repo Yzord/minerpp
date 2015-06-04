@@ -322,7 +322,7 @@ void serial_handler::send_work_midstate64()
          * 64 bytes midstate (big-endian)
          * 20 (last) bytes of the work (big-endian)
          * 32-bit target (big-endian)
-		 * 32-bit nonce_end (big-endian)
+		 * 32-bit nonce_end (little-endian)
          */
         
 		/**
@@ -378,7 +378,7 @@ void serial_handler::send_work_midstate64()
          */
         std::uint32_t target = stratum_work_->target()[6];
 
-		target = utility::be32dec(&target);
+		utility::be32enc(&target, target);
 
 		log_debug("Serial handler prepared target = " << target << ".");
 
@@ -393,8 +393,6 @@ void serial_handler::send_work_midstate64()
 		 * The end nonce.
 		 */
 		std::uint32_t nonce_end = std::numeric_limits<std::uint32_t>::max();
-
-        nonce_end = utility::be32dec(&nonce_end);
         
         log_debug("Serial handler prepared nonce end = " << nonce_end << ".");
         
