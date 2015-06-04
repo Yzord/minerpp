@@ -55,7 +55,7 @@ void serial_handler::set_has_new_work(const bool & val)
          */
         if (prepare_work(endian_data_))
         {
-#define USE_TEST_WORK 1
+#define USE_TEST_WORK 0
 #define USE_WORK_MIDSTATE 1
 
 #if (defined USE_TEST_WORK && USE_TEST_WORK)
@@ -95,6 +95,29 @@ void serial_handler::set_has_new_work(const bool & val)
             buffer[1] = msg.length;
 
 			std::memcpy(&buffer[2], endian_data_, work_length);
+
+			/**
+			 * Print the work for debugging.
+			 */
+
+			auto index = 0;
+
+			printf("work: ");
+
+			for (auto & i : buffer)
+			{
+				if (index > 1)
+				{
+					printf("%d", (unsigned)i);
+				}
+
+				if (index++ == 81)
+				{
+					break;
+				}
+			}
+
+			printf("\n");
 
             i->write(
                 reinterpret_cast<const char *> (&buffer[0]), buffer.size()
@@ -221,14 +244,16 @@ bool serial_handler::handle_result(const serial::message_t & msg)
              */
             if ((hash64[7] & 0xFFFFFF00) == 0)
             {
-                assert(stratum_work_->data()[19] == nonce);
+				log_debug("********************************** hash64 passed pre-check.");
+                
+				assert(stratum_work_->data()[19] == nonce);
 
                 return hash::check(hash64, stratum_work_->target());
             }
         }
         else
         {
-            assert(0);
+			// ...
         }
     }
     
@@ -294,6 +319,13 @@ void serial_handler::send_work_midstate64()
     if (auto i = serial_port_.lock())
     {
 		/**
+         * 64 bytes midstate (big-endian)
+         * 20 (last) bytes of the work (big-endian)
+         * 32-bit target (big-endian)
+		 * 32-bit nonce_end (big-endian)
+         */
+        
+		/**
 		 * The work length.
 		 */
 		enum { work_length = 92 };
@@ -346,8 +378,10 @@ void serial_handler::send_work_midstate64()
          */
         std::uint32_t target = stratum_work_->target()[6];
 
+		target = utility::be32dec(&target);
+
 		log_debug("Serial handler prepared target = " << target << ".");
-        
+
         /**
          * Append the target to the message.
          */
@@ -360,6 +394,10 @@ void serial_handler::send_work_midstate64()
 		 */
 		std::uint32_t nonce_end = std::numeric_limits<std::uint32_t>::max();
 
+        nonce_end = utility::be32dec(&nonce_end);
+        
+        log_debug("Serial handler prepared nonce end = " << nonce_end << ".");
+        
         /**
          * Append the nonce_end to the message.
          */
