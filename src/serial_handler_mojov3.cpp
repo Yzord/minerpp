@@ -89,7 +89,7 @@ void serial_handler_mojov3::start()
 			buffer.size()
 		);
 	}
-    
+
     state_ = state_started;
 }
 
@@ -124,18 +124,13 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
         "Serial handler MojoV3 read  = " << buf << ", len = " << len << "."
     );
 
-#define USE_READ_BUFFER 1
+	read_buffer_.insert(read_buffer_.end(), buf, buf + len);
 
-	if (len > 0)
+    /**
+     * While we have a message header (2 bytes) keep reading.
+     */
+	while (read_buffer_.size() >= 2)
 	{
-#if (defined USE_READ_BUFFER && USE_READ_BUFFER)
-		read_buffer_.insert(read_buffer_.end(), buf, buf + len);
-
-		if (read_buffer_.size() < 2)
-		{
-			return;
-		}
-
 		serial::message_t msg;
         
 		std::memcpy(&msg, &read_buffer_[0], sizeof(std::uint8_t) * 2);
@@ -146,7 +141,7 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 		{
 			if (msg.length > 0)
 			{
-				msg.value.resize(msg.length);
+				msg.value.resize(msg.length, 0);
 
 				read_buffer_.erase(read_buffer_.begin());
 				read_buffer_.erase(read_buffer_.begin());
@@ -175,30 +170,7 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 
 			return;
 		}
-#else
-		serial::message_t msg;
-        
-		std::memcpy(&msg, buf, sizeof(std::uint8_t) * 2);
 
-		if (msg.length > 0)
-		{
-			msg.value.resize(msg.length);
-
-			if (msg.length == len - sizeof(std::uint8_t) * 2)
-			{
-				std::memcpy(
-					&msg.value[0], buf + sizeof(std::uint8_t) * 2,
-					len - sizeof(std::uint8_t) * 2
-				);
-			}
-			else
-			{
-				log_error(
-					"Serial handler MojoV3 got invalid length in message."
-				);
-			}
-		}
-#endif // USE_READ_BUFFER
 		switch (msg.type)
 		{
 			case serial::message_type_ack:
@@ -260,15 +232,6 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 
 				std::memcpy(&nonce, &msg.value[0], sizeof(std::uint32_t));
 
-				if (nonce == nonce_start_)
-				{
-					log_debug("Correct");
-				}
-				else if (nonce == 0)
-				{
-					log_debug("Correct (test work)");
-				}
-
                 /**
                  * Handle the result.
                  */
@@ -303,7 +266,7 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 			break;
 			default:
 			{
-				log_debug("got " <<  (int)msg.type);
+				read_buffer_.clear();
 			}
 			break;
 		}
