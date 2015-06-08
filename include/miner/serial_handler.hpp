@@ -107,6 +107,11 @@ namespace miner {
 			 * Sends test work (midstate) to the device.
 			 */
             void send_test_work_midstate64();
+
+			/**
+			 * Sends test work (midstate) to the device for block 6947.
+			 */
+            void send_test_work_midstate64_block_6947();
         
             /**
              * The boost::asio::strand.

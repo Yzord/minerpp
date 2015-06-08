@@ -126,9 +126,6 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 
 	read_buffer_.insert(read_buffer_.end(), buf, buf + len);
 
-    /**
-     * While we have a message header (2 bytes) keep reading.
-     */
 	while (read_buffer_.size() >= 2)
 	{
 		serial::message_t msg;
@@ -162,11 +159,9 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 		}
 		else
 		{
-			log_error(
-				"Serial handler MojoV3 got invalid length " <<
-				(unsigned)msg.length << " in message, remaining = " <<
-				remaining << "."
-			);
+            /**
+             * We didn't read enough yet.
+             */
 
 			return;
 		}
@@ -232,6 +227,15 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 
 				std::memcpy(&nonce, &msg.value[0], sizeof(std::uint32_t));
 
+				if (nonce == nonce_start_)
+				{
+					log_debug("Correct");
+				}
+				else if (nonce == 0)
+				{
+					log_debug("Correct (test work)");
+				}
+
                 /**
                  * Handle the result.
                  */
@@ -266,6 +270,8 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 			break;
 			default:
 			{
+				log_debug("got " <<  (int)msg.type);
+
 				read_buffer_.clear();
 			}
 			break;

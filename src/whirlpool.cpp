@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <algorithm>
@@ -1056,6 +1057,8 @@ void whirlpool_midstate(const std::uint8_t * buf, std::uint64_t * midstate)
     whirlpool_init(&ctx);
     
     whirlpool_add(buf, 64, &ctx);
+
+	assert(sizeof(ctx.hash) == 64);
 
     std::memcpy(midstate, ctx.hash, sizeof(ctx.hash));
 }

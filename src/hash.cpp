@@ -50,7 +50,7 @@ bool hash::scan(
 bool hash::check(const std::uint32_t * hash, const std::uint32_t * target)
 {
 	bool ret = true;
-	
+
     for (auto i = 7; i >= 0; i--)
     {
         if (hash[i] > target[i])
