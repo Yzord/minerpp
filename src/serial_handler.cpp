@@ -506,6 +506,8 @@ void serial_handler::send_test_work_midstate64()
          */
         std::uint32_t endian_data[32];
         
+        // :TODO: Prepare using 128 bytes (format_hash_buffers).
+        
 		std::memcpy(endian_data, &block_header[0], 80);
 
         for (auto kk = 0; kk < 32; kk++)
@@ -610,7 +612,7 @@ void serial_handler::send_test_work_midstate64_block_6947()
         buffer[1] = msg.length;
         
 		/**
-		 * Test work (genesis block).
+		 * Test work 6947.
          * 64 bytes midstate (big-endian)
          * 20 (last) bytes of the work (big-endian)
          * 32-bit target (little-endian)
@@ -634,8 +636,6 @@ void serial_handler::send_test_work_midstate64_block_6947()
 			"0000cc96366316ff3bb81e21e0a68cf912a78e5d06bed48bb5d53e038a7ab42b877e"
 			"3f2e9e5461f3001e00000000"
         );
-        
-		log_debug("size = " << block_header.size());
 
         assert(block_header.size() == 80);
 
@@ -658,8 +658,6 @@ void serial_handler::send_test_work_midstate64_block_6947()
          * Get the hexidecimal representation of the digest.
          */
         auto hash = utility::to_hex(&digest[0], &digest[0] + 32);
-        
-		log_debug("hash = " << hash);
 
         /**
          * Validate the hash matches the genesis block hash.
@@ -678,6 +676,8 @@ void serial_handler::send_test_work_midstate64_block_6947()
          * The big endian data.
          */
         std::uint32_t endian_data[32];
+        
+        // :TODO: Prepare using 128 bytes (format_hash_buffers).
         
 		std::memcpy(endian_data, &block_header[0], 80);
 
