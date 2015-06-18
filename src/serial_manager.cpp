@@ -35,9 +35,12 @@ serial_manager::serial_manager(stack_impl & owner)
 
 void serial_manager::start()
 {
+	auto id = 0;
+	auto max_id = configuration::instance().serial_ports().size();
+
     for (auto & i : configuration::instance().serial_ports())
     {
-        auto port = std::make_shared<serial_port> (stack_impl_);
+        auto port = std::make_shared<serial_port> (stack_impl_, id++, max_id);
 
         port->set_device_model(serial::device_model_mojov3);
         

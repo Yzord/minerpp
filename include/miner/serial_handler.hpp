@@ -78,7 +78,7 @@ namespace miner {
     
         private:
         
-            // ...
+			// ...
         
         protected:
         

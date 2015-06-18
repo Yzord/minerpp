@@ -96,29 +96,6 @@ void serial_handler::set_has_new_work(const bool & val)
 
 			std::memcpy(&buffer[2], endian_data_, work_length);
 
-			/**
-			 * Print the work for debugging.
-			 */
-
-			auto index = 0;
-
-			printf("work: ");
-
-			for (auto & i : buffer)
-			{
-				if (index > 1)
-				{
-					printf("%d", (unsigned)i);
-				}
-
-				if (index++ == 81)
-				{
-					break;
-				}
-			}
-
-			printf("\n");
-
             i->write(
                 reinterpret_cast<const char *> (&buffer[0]), buffer.size()
             );
@@ -167,6 +144,11 @@ bool serial_handler::prepare_work(std::uint32_t * val)
 			 */
 			if (stratum_work_->data().size() > 0)
 			{
+				/**
+				 * Set the starting nonce.
+				 */
+				stratum_work_->data()[19] = i->nonce_begin();
+
 				auto ptr_data = &stratum_work_->data()[0];
 
 				for (auto kk = 0; kk < 32; kk++)
@@ -205,8 +187,6 @@ bool serial_handler::handle_result(const serial::message_t & msg)
              * Copy the big-endian nonce from the result.
              */
             std::memcpy(&nonce, &msg.value[0], sizeof(std::uint32_t));
-            
-            log_debug("got nonce = " << nonce);
 
             /**
              * Set the nonce in the endian_data_.
@@ -217,8 +197,6 @@ bool serial_handler::handle_result(const serial::message_t & msg)
              * Decode the nonce from big-endian.
              */
             nonce = utility::be32dec(&nonce);
-            
-            log_debug("got nonce = " << nonce);
 
             /**
              * Set the little-endian representation of the nonce in the work.
@@ -238,18 +216,13 @@ bool serial_handler::handle_result(const serial::message_t & msg)
                 reinterpret_cast<std::uint8_t *> (&endian_data_[0]), 80,
                 reinterpret_cast<std::uint8_t *> (&hash64[0])
             );
-            
-            /**
-             * Perform a pre-check on the hashes bits.
-             */
-            if ((hash64[7] & 0xFFFFFF00) == 0)
-            {
-				log_debug("passed pre-check.");
-                
-				assert(stratum_work_->data()[19] == nonce);
 
-                return hash::check(hash64, stratum_work_->target());
-            }
+            assert(stratum_work_->data()[19] == nonce);
+
+            /**
+             * Validate the results.
+             */
+            return hash::check(hash64, stratum_work_->target());
         }
         else
         {
@@ -379,7 +352,14 @@ void serial_handler::send_work_midstate64()
          */
         std::uint32_t target = stratum_work_->target()[6];
 
-		utility::be32enc(&target, target);
+		if (target < 0x000000FF)
+		{
+			utility::be32enc(&target, target);
+		}
+		else
+		{
+			target = 0xFF000000;
+		}
 
 		log_debug("Serial handler prepared target = " << target << ".");
 
@@ -394,7 +374,7 @@ void serial_handler::send_work_midstate64()
 		/**
 		 * The end nonce.
 		 */
-		std::uint32_t nonce_end = std::numeric_limits<std::uint32_t>::max();
+		auto nonce_end = i->nonce_end();
         
         log_debug("Serial handler prepared nonce end = " << nonce_end << ".");
         
@@ -506,8 +486,6 @@ void serial_handler::send_test_work_midstate64()
          */
         std::uint32_t endian_data[32];
         
-        // :TODO: Prepare using 128 bytes (format_hash_buffers).
-        
 		std::memcpy(endian_data, &block_header[0], 80);
 
         for (auto kk = 0; kk < 32; kk++)
@@ -612,7 +590,7 @@ void serial_handler::send_test_work_midstate64_block_6947()
         buffer[1] = msg.length;
         
 		/**
-		 * Test work 6947.
+		 * Test work (genesis block).
          * 64 bytes midstate (big-endian)
          * 20 (last) bytes of the work (big-endian)
          * 32-bit target (little-endian)
@@ -636,6 +614,8 @@ void serial_handler::send_test_work_midstate64_block_6947()
 			"0000cc96366316ff3bb81e21e0a68cf912a78e5d06bed48bb5d53e038a7ab42b877e"
 			"3f2e9e5461f3001e00000000"
         );
+        
+		log_debug("size = " << block_header.size());
 
         assert(block_header.size() == 80);
 
@@ -658,6 +638,8 @@ void serial_handler::send_test_work_midstate64_block_6947()
          * Get the hexidecimal representation of the digest.
          */
         auto hash = utility::to_hex(&digest[0], &digest[0] + 32);
+        
+		log_debug("hash = " << hash);
 
         /**
          * Validate the hash matches the genesis block hash.
@@ -676,8 +658,6 @@ void serial_handler::send_test_work_midstate64_block_6947()
          * The big endian data.
          */
         std::uint32_t endian_data[32];
-        
-        // :TODO: Prepare using 128 bytes (format_hash_buffers).
         
 		std::memcpy(endian_data, &block_header[0], 80);
 

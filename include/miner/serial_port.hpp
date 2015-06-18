@@ -48,8 +48,13 @@ namespace miner {
             /**
              * Constructor
              * @param owner The stack_impl.
+             * @param id The id.
+             * @param id_max The id.
              */
-            explicit serial_port(stack_impl & owner);
+            explicit serial_port(
+				stack_impl & owner, const std::uint32_t & id,
+				const std::uint32_t & id_max
+            );
         
             /**
              * Destructor
@@ -106,6 +111,16 @@ namespace miner {
              * The number of hashes per second.
              */
             const double & hashes_per_second() const;
+
+			/**
+			 * The first nonce to attempt.
+			 */
+			std::uint32_t nonce_begin();
+
+			/**
+			 * The last nonce to attempt.
+			 */
+			std::uint32_t nonce_end();
             
         private:
         
@@ -152,6 +167,16 @@ namespace miner {
              */
             std::shared_ptr<stratum_work> m_work;
         
+            /**
+             * The id.
+             */
+            std::uint32_t m_id;
+        
+            /**
+             * The maximum id.
+             */
+            std::uint32_t m_id_maximum;
+
             /**
              * The number of hashes per second.
              */

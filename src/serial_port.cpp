@@ -31,9 +31,13 @@
 
 using namespace miner;
 
-serial_port::serial_port(stack_impl & owner)
+serial_port::serial_port(
+	stack_impl & owner, const std::uint32_t & id, const std::uint32_t & id_max
+	)
     : m_serial_port(owner.io_service())
     , m_device_model(serial::device_model_none)
+    , m_id(id)
+    , m_id_maximum(id_max)
     , m_hashes_per_second(0.0)
     , stack_impl_(owner)
     , strand_(owner.io_service())
@@ -262,6 +266,16 @@ void serial_port::submit_work(const std::shared_ptr<stratum_work> & val)
 const double & serial_port::hashes_per_second() const
 {
     return m_hashes_per_second;
+}
+
+std::uint32_t serial_port::nonce_begin()
+{
+	return 0xffffffffU / m_id_maximum * m_id;
+}
+
+std::uint32_t serial_port::nonce_end()
+{
+	return 0xffffffffU / m_id_maximum * (m_id + 1) - 0x20;
 }
 
 void serial_port::do_read()

@@ -1061,6 +1061,38 @@ void whirlpool_midstate(const std::uint8_t * buf, std::uint64_t * midstate)
 	assert(sizeof(ctx.hash) == 64);
 
     std::memcpy(midstate, ctx.hash, sizeof(ctx.hash));
+	
+	std::uint8_t midstate_swapped[64];
+ 
+	for (auto i = 0; i < 64; i += 8)
+	{
+		midstate_swapped[i + 0] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 7]
+        ;
+		midstate_swapped[i + 1] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 6]
+        ;
+		midstate_swapped[i + 2] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 5]
+        ;
+		midstate_swapped[i + 3] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 4]
+        ;
+		midstate_swapped[i + 4] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 3]
+        ;
+		midstate_swapped[i + 5] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 2]
+        ;
+		midstate_swapped[i + 6] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 1]
+        ;
+		midstate_swapped[i + 7] =
+            reinterpret_cast<std::uint8_t *>(midstate)[i + 0]
+        ;
+	}
+
+	std::memcpy(midstate, midstate_swapped, sizeof(midstate_swapped));
 }
 
 bool whirlpool_test();

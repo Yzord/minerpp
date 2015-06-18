@@ -160,7 +160,7 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 		else
 		{
             /**
-             * We didn't read enough yet.
+             * We have a partial message.
              */
 
 			return;
@@ -226,6 +226,8 @@ void serial_handler_mojov3::on_read(const char * buf, const std::size_t & len)
 				std::uint32_t nonce;
 
 				std::memcpy(&nonce, &msg.value[0], sizeof(std::uint32_t));
+
+				//log_debug("nonce = " << nonce << ", nonce_start_ = " << nonce_start_);
 
 				if (nonce == nonce_start_)
 				{
