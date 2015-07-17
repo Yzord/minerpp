@@ -37,11 +37,12 @@ SOURCES =
 	configuration
 	cpu_manager
 	cpu
-        gpu
-        gpu_handler
+    gpu
+    gpu_handler
 	gpu_manager
 	hash
 	serial_handler_mojov3
+    serial_handler_ztex
 	serial_handler
 	serial_manager
 	serial_port
