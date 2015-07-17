@@ -35,6 +35,7 @@ namespace miner {
         {
             device_model_none,
             device_model_mojov3,
+            device_model_ztex,
         } device_model_t;
         
         /**
